@@ -17,7 +17,7 @@ private:
     bool                m_bCreateUnixSockServer;
 
 public:
-    CUnixIpc(const char *filePath, bool bCreateFifo = false, bool bUnblock = false);
+    CUnixIpc(const char *filePath, bool bCreateFifo = false, int lisentCnt = 1, bool bUnblock = false);
     virtual ~CUnixIpc();
 
     int Accept(void)
@@ -35,24 +35,30 @@ public:
         return m_sockfd;
     }
 
-    virtual int Read(void *buf, size_t len)
+    virtual int Read(void *buf, size_t len, int fd = -1)
     {
+        if(fd >= 0)
+            return read(fd, buf, len);
+
         return read(m_sockfd, buf, len);
     }
     
-    virtual int Write(void *buf, size_t len)
+    virtual int Write(void *buf, size_t len, int fd = -1)
     {
+        if(fd >= 0)
+            return write(fd, buf, len);
+
         return write(m_sockfd, buf, len);
     }
     
     virtual void fdClear(fd_set &set)
     {
-        return FD_CLR(m_sockfd, &set);
+        FD_CLR(m_sockfd, &set);
     }
     
     virtual void fdSet(fd_set &set)
     {
-        return FD_SET(m_sockfd, &set);
+        FD_SET(m_sockfd, &set);
     }
     
     virtual int isFDSet(fd_set &set)
