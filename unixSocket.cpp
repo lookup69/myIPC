@@ -8,11 +8,12 @@
 
 using namespace std;
 
-CUnixIpc::CUnixIpc(const char *filePath, bool bCreateUnixSockServer, bool bUnblock)
+CUnixIpc::CUnixIpc(const char *filePath, bool bCreateUnixSockServer, int lisentCnt, bool bUnblock)
     : m_typeName("UNIX Sock"), m_filePath(filePath), m_bCreateUnixSockServer(bCreateUnixSockServer)
 
 {
     m_sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+
     if(m_sockfd < 0) {
         DEBUG_PRINT("socket() ... fail\n");
         throw ("CUnixIpc::CUnixIpc");
@@ -38,7 +39,7 @@ CUnixIpc::CUnixIpc(const char *filePath, bool bCreateUnixSockServer, bool bUnblo
             throw("CUnixIpc::CUnixIpc");
         }
 
-        if(listen(m_sockfd, 10) == -1) {
+        if(listen(m_sockfd, lisentCnt) == -1) {
             DEBUG_PRINT("listen() ... fail\n");
             throw("CUnixIpc::CUnixIpc");
         }
@@ -53,6 +54,7 @@ CUnixIpc::CUnixIpc(const char *filePath, bool bCreateUnixSockServer, bool bUnblo
 
 CUnixIpc::~CUnixIpc()
 {
+    close(m_sockfd);
     if(m_bCreateUnixSockServer)
         remove(m_addr.sun_path);
 }
