@@ -1,6 +1,53 @@
+/*
+ * The following license idents are currently accepted as indicating free
+ * software 
+ *
+ *  "GPL"               [GNU Public License v2 or later]
+ *
+ *
+ * @Author	Archer Chang
+ * @file
+ * date
+ *
+ */
+
+#include "debugUtility.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+
+
+int debug_write_log(char *file, char *log)
+{
+    struct tm *t;
+    time_t time_;
+    char *line;
+    FILE *fp;
+
+    line = (char *) malloc(strlen(log) + 20);
+    if(line){
+        memset(line, 0, strlen(log) + 20);
+    } else {
+        return -1;
+    }
+
+    fp = fopen(file, "a+");
+    if(!fp) {
+        free(line);
+        return -1;
+    }
+    time(&time_);
+    t = gmtime(&time_);
+    sprintf(line, "[%2d:%2d:%2d] %s\n", t->tm_hour, t->tm_min, t->tm_sec, log);
+    fwrite(line, 1, strlen(line), fp);
+    fflush(fp);
+    fclose(fp);
+    free(line);
+
+    return 0;
+}
 
 void memory_dump(const char *buf, int len)
 {
