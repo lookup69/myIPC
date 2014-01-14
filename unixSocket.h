@@ -1,67 +1,63 @@
-#ifndef _MY_UNIX_SOCKET_H_
-#define _MY_UNIX_SOCKET_H_
+/*
+ *
+ * @brief   
+ *
+ * @author  Archer Chang
+ * @file    
+ * @date    
+ *
+ */
 
-#include "ipc.h"
+#ifndef _MY_UNIX_SOCKET_IPC_H_
+#define _MY_UNIX_SOCKET_IPC_H_
 
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <string>
+#include <stdio.h>
 
-class CUnixIpc : public CIpc
+
+class CUnixSocketIpc
 {
 private:
-    std::string         m_typeName;
-    std::string         m_filePath;
-    struct sockaddr_un  m_addr;
+    struct sockaddr_un  m_srvAddr;
     int                 m_sockfd;
-    bool                m_bCreateUnixSockServer;
+    int                 m_cliSockFd;
+    bool                m_bBeServer;
 
 public:
-    CUnixIpc(const char *filePath, bool bCreateFifo = false, int lisentCnt = 1, bool bUnblock = false);
-    virtual ~CUnixIpc();
+    CUnixSocketIpc(const char *srvFilePath, bool bBeServer = false);
+    virtual ~CUnixSocketIpc();
 
-    int Accept(void)
-    {
-        return accept(m_sockfd, NULL, NULL);
-    }
     
-    virtual const char *getIpcTypeName(void) const
+    virtual bool isServer(void) const
     {
-        return m_typeName.c_str();
+        return m_bBeServer;
     }
-    
-    virtual int getFd(void) const
+
+    virtual int getSockFd(void) const
     {
         return m_sockfd;
     }
 
-    virtual int Read(void *buf, size_t len, int fd = -1)
-    {
-        if(fd >= 0)
-            return read(fd, buf, len);
+    int Listen(int maxConnection = 1);
+    int Accept(void);
+    int Connect(void);
+    int Read(void *buf, size_t len);
+    int Write(void *buf, size_t len);
+    void Close(int sockfd);
 
-        return read(m_sockfd, buf, len);
-    }
-    
-    virtual int Write(void *buf, size_t len, int fd = -1)
-    {
-        if(fd >= 0)
-            return write(fd, buf, len);
-
-        return write(m_sockfd, buf, len);
-    }
-    
-    virtual void fdClear(fd_set &set)
+    void fdClear(fd_set &set)
     {
         FD_CLR(m_sockfd, &set);
     }
     
-    virtual void fdSet(fd_set &set)
+    void fdSet(fd_set &set)
     {
         FD_SET(m_sockfd, &set);
     }
     
-    virtual int isFDSet(fd_set &set)
+    int isFDSet(fd_set &set)
     {
         return FD_ISSET(m_sockfd, &set);
     }

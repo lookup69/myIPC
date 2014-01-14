@@ -1,63 +1,104 @@
-#include "debugUtility.h"
+/*
+ * @brief   
+ *
+ * @author  Archer Chang
+ * @file    
+ * @date    2013-Feb-19
+ *
+ */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include "unixSocketIpc.h"
 
-#include "unixSocket.h"
+#define MAX_CLIENT     1000
 
 using namespace std;
 
-CUnixIpc::CUnixIpc(const char *filePath, bool bCreateUnixSockServer, int lisentCnt, bool bUnblock)
-    : m_typeName("UNIX Sock"), m_filePath(filePath), m_bCreateUnixSockServer(bCreateUnixSockServer)
+CUnixSocketIpc::CUnixSocketIpc(const char *srvFilePath, bool bBeServer) 
+    : m_sockfd(-1), m_bBeServer(bBeServer)
 
 {
+    memset(&m_srvAddr, 0, sizeof(m_srvAddr));
+
     m_sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
     if(m_sockfd < 0) {
-        DEBUG_PRINT("socket() ... fail\n");
-        throw ("CUnixIpc::CUnixIpc");
+        throw ("CUnixSocketIpc::CUnixSocketIpc");
     }
 
-    if(bUnblock) {
-        if(fcntl(m_sockfd, O_NONBLOCK) < 0) {
-            DEBUG_PRINT("fcntl() ... fail\n");
-            throw ("CUnixIpc::CUnixIpc");
-        }
-    }
-    
-    memset(&m_addr, 0, sizeof(m_addr));
-    m_addr.sun_family = AF_UNIX;
-    strncpy(m_addr.sun_path, filePath, sizeof(m_addr.sun_path) - 1);
+    m_srvAddr.sun_family = AF_UNIX;
+    strncpy(m_srvAddr.sun_path, srvFilePath, sizeof(m_srvAddr.sun_path) - 1);
 
-    // will become to server
-    if(bCreateUnixSockServer) {
-        remove(m_addr.sun_path);
+    if(bBeServer) {
+        remove(srvFilePath);
 
-        if(bind(m_sockfd, (struct sockaddr *) &m_addr, sizeof(struct sockaddr_un)) == -1) {
-            DEBUG_PRINT("bind() ... fail\n");
-            throw("CUnixIpc::CUnixIpc");
+        //printf("(server) bind():%s ..................(1)\n", m_srvAddr.sun_path);
+        if(bind(m_sockfd, (struct sockaddr *) &m_srvAddr, sizeof(struct sockaddr_un)) == -1) {
+            close(m_sockfd);
+            throw("CUnixSocketIpc::CUnixSocketIpc");
         }
-
-        if(listen(m_sockfd, lisentCnt) == -1) {
-            DEBUG_PRINT("listen() ... fail\n");
-            throw("CUnixIpc::CUnixIpc");
-        }
-    // will become to client
-    } else {
-        if (connect(m_sockfd, (struct sockaddr *) &m_addr, sizeof(struct sockaddr_un)) == -1) {
-            DEBUG_PRINT("connect() ... fail\n");
-            throw("CUnixIpc::CUnixIpc");
-        }
-    }
+        // let everybody can read/write
+        chmod(m_srvAddr.sun_path, S_IRWXU|S_IRWXG|S_IRWXO);
+        
+    } 
 }
 
-CUnixIpc::~CUnixIpc()
+CUnixSocketIpc::~CUnixSocketIpc()
 {
-    close(m_sockfd);
-    if(m_bCreateUnixSockServer)
-        remove(m_addr.sun_path);
+    if(m_bBeServer) { 
+        if(strlen(m_srvAddr.sun_path) != 0) {
+            remove(m_srvAddr.sun_path);
+        }
+    }
+
+    if(m_sockfd != -1) 
+        close(m_sockfd);
 }
 
+int CUnixSocketIpc::Listen(int maxConnection)
+{
+    return listen(m_sockfd, maxConnection);
+}
 
+int CUnixSocketIpc::Connect(void)
+{
+    return connect(m_sockfd, (struct sockaddr *) &m_srvAddr, sizeof(struct sockaddr_un));
+}
+
+int CUnixSocketIpc::Accept(void)
+{
+    m_cliSockFd = accept(m_sockfd, NULL, 0);
+
+    return m_cliSockFd;
+}
+
+int CUnixSocketIpc::Read(void *buf, size_t len)
+{
+    memset(buf, 0, len);
+
+    if(m_bBeServer) {
+        return read(m_cliSockFd, buf, len);
+    }
+
+    return read(m_sockfd, buf, len);
+}
+
+int CUnixSocketIpc::Write(void *buf, size_t len)
+{
+    if(m_bBeServer) {
+        return write(m_cliSockFd, buf, len);
+    }
+
+    return write(m_sockfd, buf, len);
+}
+
+void CUnixSocketIpc::Close(int sockfd)
+{
+    close(sockfd);
+}
 
