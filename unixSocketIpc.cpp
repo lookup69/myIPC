@@ -67,6 +67,7 @@ int CUnixSocketIpc::Listen(int maxConnection)
 
 int CUnixSocketIpc::Connect(void)
 {
+#if 0
     struct timeval timeout;      
     timeout.tv_sec = 5;
     timeout.tv_usec = 0;
@@ -75,7 +76,7 @@ int CUnixSocketIpc::Connect(void)
         throw ("CUnixSocketIpc::CUnixSocketIpc");
     if (setsockopt (m_sockfd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
         throw ("CUnixSocketIpc::CUnixSocketIpc");
-
+#endif
     return connect(m_sockfd, (struct sockaddr *) &m_srvAddr, sizeof(struct sockaddr_un));
 }
 
@@ -96,18 +97,16 @@ int CUnixSocketIpc::Read(void *buf, size_t len, int sd)
     memset(buf, 0, len);
 _again:
     if(m_bIsServer) {
-        if(sd >= 0) {
-            if((ret = read(sd, buf, len)) < 0)
-                if(errno == EINTR) goto _again;
-        } else {
-            if((ret = read(m_cliSockFd, buf, len)) < 0)
-                if(errno == EINTR) goto _again;
-        }
+        if(sd >= 0) 
+            ret = read(sd, buf, len);
+        else 
+            ret = read(m_cliSockFd, buf, len);
     } else {
-        if((ret = read(m_sockfd, buf, len)) < 0)
-            if(errno == EINTR)
-                goto _again;
+        ret = read(m_sockfd, buf, len);
     }
+
+    if((ret < 0) && (errno == EINTR)) 
+        goto _again;
 
     return ret;
 }
@@ -119,17 +118,17 @@ int CUnixSocketIpc::Write(void *buf, size_t len, int sd)
 _again:
     if(m_bIsServer) {
         if(sd >= 0) {
-            if((ret = write(sd, buf, len)) < 0)
-                if(errno == EINTR) goto _again;
+            ret = write(sd, buf, len);
         } else {
-            if((ret = write(m_cliSockFd, buf, len)) < 0)
-                if(errno == EINTR) goto _again;
+            ret = write(m_cliSockFd, buf, len);
         }
     } else {
-        if((ret = write(m_sockfd, buf, len)) < 0)
-            if(errno == EINTR) goto _again;
+        ret = write(m_sockfd, buf, len);
     }
-
+	
+    if((ret < 0) && (errno == EINTR)) 
+        goto _again;
+		
     return ret;
 }
 
