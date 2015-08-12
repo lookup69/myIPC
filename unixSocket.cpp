@@ -7,48 +7,28 @@
  *
  */
 
+#include "unixSocket.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
-#include "unixSocketIpc.h"
+
 
 #define MAX_CLIENT     1000
 
-using namespace std;
+using namespace lookup69;
 
-CUnixSocketIpc::CUnixSocketIpc(const char *srvFilePath, bool bBeServer) 
-    : m_sockfd(-1), m_bBeServer(bBeServer)
-
+UnixSocket::UnixSocket(const char *srvFilePath, bool bBeServer) 
+    : m_socket(-1), m_bBeServer(bBeServer), m_isConnected(false)
 {
     memset(&m_srvAddr, 0, sizeof(m_srvAddr));
-
-    m_sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-
-    if(m_sockfd < 0) {
-        throw ("CUnixSocketIpc::CUnixSocketIpc");
-    }
-
     m_srvAddr.sun_family = AF_UNIX;
     strncpy(m_srvAddr.sun_path, srvFilePath, sizeof(m_srvAddr.sun_path) - 1);
-
-    if(bBeServer) {
-        remove(srvFilePath);
-
-        //printf("(server) bind():%s ..................(1)\n", m_srvAddr.sun_path);
-        if(bind(m_sockfd, (struct sockaddr *) &m_srvAddr, sizeof(struct sockaddr_un)) == -1) {
-            close(m_sockfd);
-            throw("CUnixSocketIpc::CUnixSocketIpc");
-        }
-        // let everybody can read/write
-        chmod(m_srvAddr.sun_path, S_IRWXU|S_IRWXG|S_IRWXO);
-        
-    } 
 }
 
-CUnixSocketIpc::~CUnixSocketIpc()
+UnixSocket::~UnixSocket()
 {
     if(m_bBeServer) { 
         if(strlen(m_srvAddr.sun_path) != 0) {
@@ -56,49 +36,74 @@ CUnixSocketIpc::~CUnixSocketIpc()
         }
     }
 
-    if(m_sockfd != -1) 
-        close(m_sockfd);
+    if(m_socket != -1) 
+        close(m_socket);
 }
 
-int CUnixSocketIpc::Listen(int maxConnection)
+int UnixSocket::ipcInit(bool bAutoListenOrConnect)
 {
-    return listen(m_sockfd, maxConnection);
+    m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+
+    if(m_socket < 0) 
+        return -1;
+
+    if(m_bBeServer) {
+        remove(m_srvAddr.sun_path);
+
+        if(bind(m_socket, (struct sockaddr *) &m_srvAddr, sizeof(struct sockaddr_un)) == -1) {
+            close(m_socket);
+            return -1;
+        }
+        // let everybody can read/write
+        chmod(m_srvAddr.sun_path, S_IRWXU|S_IRWXG|S_IRWXO);
+        if(bAutoListenOrConnect) 
+            return Listen();
+    } else {
+        if(bAutoListenOrConnect) 
+            return Connect();
+    }
+
+    return 0;
 }
 
-int CUnixSocketIpc::Connect(void)
+int UnixSocket::Connect(void)
 {
-    return connect(m_sockfd, (struct sockaddr *) &m_srvAddr, sizeof(struct sockaddr_un));
+    int ret = connect(m_socket, (struct sockaddr *) &m_srvAddr, sizeof(struct sockaddr_un));
+    
+    if(ret == 0)
+        m_isConnected = true;
+    else
+        m_isConnected = false;
+    return ret;
 }
 
-int CUnixSocketIpc::Accept(void)
-{
-    m_cliSockFd = accept(m_sockfd, NULL, 0);
-
-    return m_cliSockFd;
-}
-
-int CUnixSocketIpc::Read(void *buf, size_t len)
+int UnixSocket::Read(void *buf, size_t len, int cliSocket)
 {
     memset(buf, 0, len);
 
     if(m_bBeServer) {
-        return read(m_cliSockFd, buf, len);
+        if(cliSocket < 0) 
+            return -1;
+        return read(cliSocket, buf, len);
     }
-
-    return read(m_sockfd, buf, len);
+    
+    if(m_isConnected)
+        return -1;
+        
+    return read(m_socket, buf, len);
 }
 
-int CUnixSocketIpc::Write(void *buf, size_t len)
+int UnixSocket::Write(void *buf, size_t len, int cliSocket)
 {
     if(m_bBeServer) {
-        return write(m_cliSockFd, buf, len);
+        if(cliSocket < 0) 
+            return -1;
+        return write(cliSocket, buf, len);
     }
 
-    return write(m_sockfd, buf, len);
-}
+    if(m_isConnected)
+        return -1;
 
-void CUnixSocketIpc::Close(int sockfd)
-{
-    close(sockfd);
+    return write(m_socket, buf, len);
 }
 

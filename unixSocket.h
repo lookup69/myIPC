@@ -8,59 +8,71 @@
  *
  */
 
-#ifndef _MY_UNIX_SOCKET_IPC_H_
-#define _MY_UNIX_SOCKET_IPC_H_
+#ifndef _LOOKUP69_UNIX_SOCKET_H_
+#define _LOOKUP69_SOCKET_H_
 
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <string>
-#include <stdio.h>
+#include <unistd.h>
 
-
-class CUnixSocketIpc
-{
-private:
-    struct sockaddr_un  m_srvAddr;
-    int                 m_sockfd;
-    int                 m_cliSockFd;
-    bool                m_bBeServer;
-
-public:
-    CUnixSocketIpc(const char *srvFilePath, bool bBeServer = false);
-    virtual ~CUnixSocketIpc();
-
-    
-    virtual bool isServer(void) const
+namespace lookup69 {
+    class UnixSocket
     {
-        return m_bBeServer;
-    }
+    private:
+        struct sockaddr_un  m_srvAddr;
+        int                 m_socket;
+        bool                m_bBeServer;
+        bool                m_isConnected;
 
-    virtual int getSockFd(void) const
-    {
-        return m_sockfd;
-    }
+    public:
+        explicit UnixSocket(const char *srvFilePath, bool bBeServer = false);
+        virtual ~UnixSocket();
 
-    int Listen(int maxConnection = 1);
-    int Accept(void);
-    int Connect(void);
-    int Read(void *buf, size_t len);
-    int Write(void *buf, size_t len);
-    void Close(int sockfd);
+        int ipcInit(bool bAutoListenOrConnect = true);
 
-    void fdClear(fd_set &set)
-    {
-        FD_CLR(m_sockfd, &set);
-    }
-    
-    void fdSet(fd_set &set)
-    {
-        FD_SET(m_sockfd, &set);
-    }
-    
-    int isFDSet(fd_set &set)
-    {
-        return FD_ISSET(m_sockfd, &set);
-    }
-};
+        virtual bool isServer(void) const
+        {
+            return m_bBeServer;
+        }
 
+        virtual int getSockFd(void) const
+        {
+            return m_socket;
+        }
+
+        int Listen(int maxConnection = 1)
+        {
+            return listen(m_socket, maxConnection);
+        }
+
+        int Accept(void)
+        {
+            return accept(m_socket, NULL, 0);
+        }
+
+        int Connect(void);
+        int Read(void *buf, size_t len, int cliSocket = -1);
+        int Write(void *buf, size_t len, int cliSocket = -1);
+
+        static void Close(int socket)
+        {
+            close(socket);
+        }
+
+        void fdClear(fd_set &set)
+        {
+            FD_CLR(m_socket, &set);
+        }
+
+        void fdSet(fd_set &set)
+        {
+            FD_SET(m_socket, &set);
+        }
+
+        int isFDSet(fd_set &set)
+        {
+            return FD_ISSET(m_socket, &set);
+        }
+    };
+}
 #endif
