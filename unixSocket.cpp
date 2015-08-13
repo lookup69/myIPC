@@ -52,6 +52,7 @@ int UnixSocket::ipcInit(bool bAutoListenOrConnect)
 
         if(bind(m_socket, (struct sockaddr *) &m_srvAddr, sizeof(struct sockaddr_un)) == -1) {
             close(m_socket);
+            m_socket = -1;
             return -1;
         }
         // let everybody can read/write

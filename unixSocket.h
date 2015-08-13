@@ -54,9 +54,12 @@ namespace lookup69 {
         int Read(void *buf, size_t len, int cliSocket = -1);
         int Write(void *buf, size_t len, int cliSocket = -1);
 
-        static void Close(int socket)
+        static int Close(int socket)
         {
-            close(socket);
+            int ret = close(socket);
+
+            socket = -1;
+            return ret;
         }
 
         void fdClear(fd_set &set)
