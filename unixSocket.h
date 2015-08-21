@@ -15,7 +15,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-namespace lookup69 {
+namespace lkup69 {
     class UnixSocket
     {
     private:

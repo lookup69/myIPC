@@ -18,7 +18,7 @@
 
 #define MAX_CLIENT     1000
 
-using namespace lookup69;
+using namespace lkup69;
 
 UnixSocket::UnixSocket(const char *srvFilePath, bool bBeServer) 
     : m_socket(-1), m_bBeServer(bBeServer), m_isConnected(false)
@@ -102,7 +102,7 @@ int UnixSocket::Write(void *buf, size_t len, int cliSocket)
         return write(cliSocket, buf, len);
     }
 
-    if(m_isConnected)
+    if(!m_isConnected) 
         return -1;
 
     return write(m_socket, buf, len);
