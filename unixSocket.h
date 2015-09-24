@@ -8,8 +8,8 @@
  *
  */
 
-#ifndef _LOOKUP69_UNIX_SOCKET_H_
-#define _LOOKUP69_SOCKET_H_
+#ifndef _LKUP69_UNIX_SOCKET_H_
+#define _LKUP69_UNIX_SOCKET_H_
 
 #include <sys/socket.h>
 #include <sys/un.h>
