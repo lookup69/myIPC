@@ -14,52 +14,53 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <string>
 
 namespace lkup69 {
     class UnixSocket
     {
     private:
-        struct sockaddr_un  m_srvAddr;
+        struct sockaddr_un  m_socketPath;
         int                 m_socket;
-        bool                m_bBeServer;
+        bool                m_bServer;
         bool                m_isConnected;
+        std::string         m_path;
 
+        UnixSocket(const UnixSocket &);
+        UnixSocket &operator=(const UnixSocket &);
     public:
-        explicit UnixSocket(const char *srvFilePath, bool bBeServer = false);
+        explicit UnixSocket(const std::string &path = std::string{}, bool bBeServer = false);
         virtual ~UnixSocket();
 
-        int ipcInit(bool bAutoListenOrConnect = true);
+        int init(bool bAutoListenOrConnect = true, const std::string &path = std::string{});
 
-        virtual bool isServer(void) const
+        bool isServer(void) const
         {
-            return m_bBeServer;
+            return m_bServer;
         }
 
-        virtual int getSockFd(void) const
+        int getSockFd(void) const
         {
             return m_socket;
         }
 
-        int Listen(int maxConnection = 1)
+        int listen(int maxConnection = 1)
         {
-            return listen(m_socket, maxConnection);
+            return ::listen(m_socket, maxConnection);
         }
 
-        int Accept(void)
+        int accept(void)
         {
-            return accept(m_socket, NULL, 0);
+            return ::accept(m_socket, NULL, 0);
         }
 
-        int Connect(void);
-        int Read(void *buf, size_t len, int cliSocket = -1);
-        int Write(void *buf, size_t len, int cliSocket = -1);
+        int connect(void);
+        int read(void *buf, size_t len, int cliSocket = -1);
+        int write(void *buf, size_t len, int cliSocket = -1);
 
-        static int Close(int socket)
+        int close(int socket)
         {
-            int ret = close(socket);
-
-            socket = -1;
-            return ret;
+            return ::close(socket);
         }
 
         void fdClear(fd_set &set)
